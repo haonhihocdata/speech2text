@@ -1,37 +1,33 @@
-from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC
-import soundfile as sf
+# import
 import torch
-import warnings
+import librosa
+from transformers import Wav2Vec2ForCTC, Wav2Vec2Tokenizer, Wav2Vec2Processor
 
-warnings.simplefilter("ignore", UserWarning)
-
-# Load model and tokenizer
+# load the tokenizer and model for Vietnamese
 processor = Wav2Vec2Processor.from_pretrained("nguyenvulebinh/wav2vec2-base-vietnamese-250h")
 model = Wav2Vec2ForCTC.from_pretrained("nguyenvulebinh/wav2vec2-base-vietnamese-250h")
 
-# Define function to read in sound file
-def map_to_array(batch):
-    speech, sampling_rate = sf.read(batch["file"])
-    batch["speech"] = speech
-    batch["sampling_rate"] = sampling_rate
-    return batch
+# load the audio data (use your own wav file here!)
+input_audio, sr = librosa.load('noise_reduction.wav', sr=16000)  # assuming 'test_vi.wav' is your Vietnamese audio file
 
-# Load dummy dataset and read sound files
-ds = map_to_array({
-    "file": 'test_vn.wav'
-})
+# process the audio
+input_values = processor(input_audio, return_tensors="pt", padding="longest").input_values
 
-# Tokenize with the correct sampling rate
-input_values = processor(ds["speech"], sampling_rate=ds["sampling_rate"], return_tensors="pt", padding="longest").input_values
-
-# Enable gradient checkpointing
-model.gradient_checkpointing_enable()
-
-# Retrieve logits
+# retrieve logits
 logits = model(input_values).logits
 
-# Decode the predicted IDs
+# take argmax and decode
 predicted_ids = torch.argmax(logits, dim=-1)
 transcription = processor.batch_decode(predicted_ids)
 
+# print the output
 print(transcription)
+
+'''@misc{Thai_Binh_Nguyen_wav2vec2_vi_2021,
+  author = {Thai Binh Nguyen},
+  doi = {10.5281/zenodo.5356039},
+  month = {09},
+  title = {{Vietnamese end-to-end speech recognition using wav2vec 2.0}},
+  url = {https://github.com/vietai/ASR},
+  year = {2021}
+}'''
